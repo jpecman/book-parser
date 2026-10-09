@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Nix
+result
+result-*
+.direnv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Books
+*.pdf
+*.epub
+*.mobi
+*.pdb
+*.fb2
+
+# Editors / OS
+.claude/settings.local.json
+CLAUDE.local.md
+.vscode/
+.idea/
+.DS_Store
