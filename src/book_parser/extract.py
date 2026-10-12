@@ -1,18 +1,14 @@
 import pymupdf
 
 
-def read_all_pages(path: str) -> str:
+def get_number_of_chapters(path: str) -> int:
     with pymupdf.open(path) as doc:
-        return "\n".join(page.get_text() for page in doc)
+        return doc.chapter_count
 
 
-def read_first_pages(path: str, count: int = 3) -> str:
-    texts: list[str] = []
-    i = 0
+def read_chapter(path: str, chapter: int = 0) -> str:
     with pymupdf.open(path) as doc:
-        for page in doc:
-            texts.append(page.get_text())
-            i += 1
-            if i == count:
-                break
-    return "\n".join(texts)
+        return "\n".join(
+            doc[(chapter, pno)].get_text()
+            for pno in range(doc.chapter_page_count(chapter))
+        )

@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 from qdrant_client import QdrantClient
@@ -9,9 +10,13 @@ class QdrantStore:
         self,
         collection: str,
         vector_size: int,
-        url: str = "http://localhost:6333",
+        url: str | None = None,
+        api_key: str | None = None,
     ) -> None:
-        self._client = QdrantClient(url=url)
+        self._client = QdrantClient(
+            url=url or os.environ.get("QDRANT_URL", "http://localhost:6333"),
+            api_key=api_key or os.environ.get("QDRANT_API_KEY"),
+        )
         self._collection = collection
         self._vector_size = vector_size
 
