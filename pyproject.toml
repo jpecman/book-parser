@@ -5,6 +5,7 @@ description = "Extracts text from books and stores it in a vector database"
 requires-python = ">=3.12"
 dependencies = [
     "fastembed",
+    "langchain-ollama",
     "langchain-openai",
     "pymupdf",
     "qdrant-client",

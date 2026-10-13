@@ -13,6 +13,24 @@ Enter the development shell from the project root:
 
 ```sh
 nix develop
-python -m book_parser my-book.epub
+python -m book_parser ~/books
+```
+
+Every book in the directory is embedded; with no argument it reads `~/tmp/agent-books`. Chunking is set with environment variables, and each combination gets its own collection:
+
+```sh
+CHUNK_SIZE=800 CHUNK_OVERLAP=2 python -m book_parser ~/books
+```
+
+To see how one book would be chunked without embedding or storing anything:
+
+```sh
+python -m book_parser --dry-run ~/books/my-book.epub
+```
+
+To also run the chunks through the embedding model, still without storing anything:
+
+```sh
+python -m book_parser --dry-run-embed ~/books/my-book.epub
 ```
 
