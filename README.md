@@ -22,6 +22,12 @@ Every book in the directory is embedded; with no argument it reads `~/tmp/agent-
 CHUNK_SIZE=800 CHUNK_OVERLAP=2 python -m book_parser ~/books
 ```
 
+To skip some books, list their file names after `--exclude`, after the directory:
+
+```sh
+python -m book_parser ~/books --exclude dune.epub "Old notes.pdf"
+```
+
 To see how one book would be chunked without embedding or storing anything:
 
 ```sh

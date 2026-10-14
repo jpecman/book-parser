@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import sys
@@ -27,6 +28,14 @@ def find_books(directory: Path) -> list[Path]:
         for path in directory.iterdir()
         if path.is_file() and path.suffix.lower() in BOOK_SUFFIXES
     )
+
+
+# Compares file names only, so a path from shell tab completion works too.
+def exclude_books(books: list[Path], excluded: list[str]) -> list[Path]:
+    names = {Path(name).name for name in excluded}
+    for name in sorted(names - {book.name for book in books}):
+        print(f"Excluded book '{name}' is not in the directory", file=sys.stderr)
+    return [book for book in books if book.name not in names]
 
 
 def read_setting(name: str, default: int, minimum: int) -> int:
@@ -97,39 +106,74 @@ def print_embeddings(
     print(f"Embedded {total} chunks for collection '{collection}', nothing stored")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="python -m book_parser")
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        type=Path,
+        help=f"folder with books to embed (default: {BOOKS_DIR})",
+    )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        default=[],
+        metavar="BOOK",
+        help="file names of books in the folder to skip",
+    )
+    dry_runs = parser.add_mutually_exclusive_group()
+    dry_runs.add_argument(
+        "--dry-run",
+        type=Path,
+        metavar="BOOK",
+        help="print how one book would be chunked, without embedding or storing",
+    )
+    dry_runs.add_argument(
+        "--dry-run-embed",
+        type=Path,
+        metavar="BOOK",
+        help="also embed the chunks of one book, still without storing",
+    )
+    args = parser.parse_args()
+
+    if (args.dry_run or args.dry_run_embed) and (args.directory or args.exclude):
+        parser.error("a dry run takes a single book, not a directory or --exclude")
+    return args
+
+
 def main() -> None:
-    dry_run = len(sys.argv) == 3 and sys.argv[1] in ("--dry-run", "--dry-run-embed")
-    if len(sys.argv) > 2 and not dry_run:
-        print(
-            "Usage: python -m book_parser [directory]\n"
-            "       python -m book_parser --dry-run <book>\n"
-            "       python -m book_parser --dry-run-embed <book>",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    args = parse_args()
 
     chunk_size = read_setting("CHUNK_SIZE", default=500, minimum=1)
     overlap = read_setting("CHUNK_OVERLAP", default=1, minimum=0)
 
-    if dry_run:
-        book = Path(sys.argv[2]).expanduser()
+    dry_run_book: Path | None = args.dry_run or args.dry_run_embed
+    if dry_run_book:
+        book = dry_run_book.expanduser()
         if not book.is_file():
             print(f"Not a file: {book}", file=sys.stderr)
             sys.exit(1)
-        if sys.argv[1] == "--dry-run":
+        if args.dry_run:
             print_chunks(book, chunk_size, overlap)
         else:
             print_embeddings(book, create_embedder(), chunk_size, overlap)
         return
 
-    directory = Path(sys.argv[1]).expanduser() if len(sys.argv) == 2 else BOOKS_DIR
+    directory: Path = args.directory.expanduser() if args.directory else BOOKS_DIR
     if not directory.is_dir():
         print(f"Not a directory: {directory}", file=sys.stderr)
         sys.exit(1)
 
-    books = find_books(directory)
-    if not books:
+    found = find_books(directory)
+    if not found:
         print(f"No books found in {directory}", file=sys.stderr)
+        sys.exit(1)
+
+    books = exclude_books(found, args.exclude)
+    if len(books) < len(found):
+        print(f"Skipping {len(found) - len(books)} excluded books")
+    if not books:
+        print(f"All books in {directory} are excluded", file=sys.stderr)
         sys.exit(1)
 
     started = time.perf_counter()
