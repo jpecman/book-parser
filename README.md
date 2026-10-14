@@ -28,6 +28,12 @@ To skip some books, list their file names after `--exclude`, after the directory
 python -m book_parser ~/books --exclude dune.epub "Old notes.pdf"
 ```
 
+To continue an interrupted run, start the first book at a later chapter, numbered from 0 as in the log. The books after it start from the beginning:
+
+```sh
+python -m book_parser ~/books --start-chapter 12
+```
+
 To see how one book would be chunked without embedding or storing anything:
 
 ```sh

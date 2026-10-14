@@ -121,6 +121,12 @@ def parse_args() -> argparse.Namespace:
         metavar="BOOK",
         help="file names of books in the folder to skip",
     )
+    parser.add_argument(
+        "--start-chapter",
+        type=int,
+        metavar="N",
+        help="start the first book at chapter N, counted from 0 as in the log",
+    )
     dry_runs = parser.add_mutually_exclusive_group()
     dry_runs.add_argument(
         "--dry-run",
@@ -136,8 +142,13 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
 
-    if (args.dry_run or args.dry_run_embed) and (args.directory or args.exclude):
-        parser.error("a dry run takes a single book, not a directory or --exclude")
+    dry_run = args.dry_run or args.dry_run_embed
+    if dry_run and (args.directory or args.exclude or args.start_chapter is not None):
+        parser.error(
+            "a dry run takes a single book, not a directory, --exclude or --start-chapter"
+        )
+    if args.start_chapter is not None and args.start_chapter < 0:
+        parser.error("--start-chapter must be 0 or more")
     return args
 
 
@@ -176,18 +187,38 @@ def main() -> None:
         print(f"All books in {directory} are excluded", file=sys.stderr)
         sys.exit(1)
 
+    start_chapter: int = args.start_chapter or 0
+    first_book_chapters = get_number_of_chapters(str(books[0]))
+    if start_chapter >= first_book_chapters:
+        print(
+            f"--start-chapter {start_chapter} is past the last chapter of "
+            f"{books[0].name}, which has chapters 0 to {first_book_chapters - 1}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     started = time.perf_counter()
     embedder = create_embedder()
     collection = collection_name(embedder, chunk_size, overlap)
 
     total = 0
-    for book in books:
-        print(book.name)
-        for chapter in range(get_number_of_chapters(str(book))):
+    for index, book in enumerate(books):
+        # Only the first book can resume part way; the rest start at the beginning.
+        first_chapter = start_chapter if index == 0 else 0
+        if first_chapter:
+            print(f"{book.name} (from chapter {first_chapter})")
+        else:
+            print(book.name)
+        for chapter in range(first_chapter, get_number_of_chapters(str(book))):
+            chapter_started = time.perf_counter()
             stored = store_chapter(
                 str(book), book.name, chapter, embedder, collection, chunk_size, overlap
             )
-            print(f"  Chapter {chapter}: {stored} chunks")
+            duration = time.perf_counter() - chapter_started
+            print(
+                f"  {time.strftime('%H:%M:%S')} Chapter {chapter}: "
+                f"{stored} chunks ({duration:.1f} s)"
+            )
             total += stored
 
     print(f"Stored {total} chunks in Qdrant collection '{collection}'")
