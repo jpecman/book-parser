@@ -29,7 +29,7 @@ def store_chapter(
     book: Path,
     chapter: int,
     embedder: Embedder,
-    collection: str,
+    store: QdrantStore,
     settings: ChunkSettings,
 ) -> int:
     chunks = split_into_chunks(
@@ -48,8 +48,6 @@ def store_chapter(
         for index, chunk in enumerate(chunks)
     ]
 
-    store = QdrantStore(collection=collection, vector_size=len(vectors[0]))
-    store.ensure_collection()
     store.upsert(ids, vectors, payloads)
     return len(chunks)
 
@@ -67,6 +65,10 @@ def ingest_books(books: list[Path], settings: ChunkSettings, start_chapter: int 
     started = time.perf_counter()
     embedder = create_embedder()
     collection = collection_name(embedder, settings)
+    store = QdrantStore(collection=collection)
+    # One probe embedding gives the vector size, and fails fast if the
+    # embedder or Qdrant is unreachable before any book is read.
+    store.ensure_collection(vector_size=len(embedder.embed(["probe"])[0]))
 
     total = 0
     for index, book in enumerate(books):
@@ -77,7 +79,7 @@ def ingest_books(books: list[Path], settings: ChunkSettings, start_chapter: int 
             print(book.name)
         for chapter in range(first_chapter, get_number_of_chapters(str(book))):
             chapter_started = time.perf_counter()
-            stored = store_chapter(book, chapter, embedder, collection, settings)
+            stored = store_chapter(book, chapter, embedder, store, settings)
             duration = time.perf_counter() - chapter_started
             print(
                 f"  {time.strftime('%H:%M:%S')} Chapter {chapter}: "

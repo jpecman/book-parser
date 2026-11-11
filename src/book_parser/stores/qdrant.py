@@ -9,7 +9,6 @@ class QdrantStore:
     def __init__(
         self,
         collection: str,
-        vector_size: int,
         url: str | None = None,
         api_key: str | None = None,
     ) -> None:
@@ -18,16 +17,14 @@ class QdrantStore:
             api_key=api_key or os.environ.get("QDRANT_API_KEY"),
         )
         self._collection = collection
-        self._vector_size = vector_size
 
-    def ensure_collection(self) -> None:
+    # The vector size is only needed when the collection is created.
+    def ensure_collection(self, vector_size: int) -> None:
         if self._client.collection_exists(self._collection):
             return
         self._client.create_collection(
             collection_name=self._collection,
-            vectors_config=VectorParams(
-                size=self._vector_size, distance=Distance.COSINE
-            ),
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
         )
 
     # Qdrant only accepts unsigned integers or UUID strings as point ids.
