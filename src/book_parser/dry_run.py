@@ -5,6 +5,7 @@ from book_parser.chunking import split_into_chunks
 from book_parser.embed import Embedder
 from book_parser.extract import get_number_of_chapters, read_chapter
 from book_parser.ingest import collection_name
+from book_parser.lemmatize import Lemmatizer
 from book_parser.settings import ChunkSettings
 
 
@@ -19,6 +20,20 @@ def print_chunks(book: Path, settings: ChunkSettings) -> None:
             print(f"  {index} [{len(chunk)}] {chunk}")
         total += len(chunks)
     print(f"{total} chunks, nothing embedded or stored")
+
+
+def print_lemmas(book: Path, lemmatizer: Lemmatizer, settings: ChunkSettings) -> None:
+    total = 0
+    for chapter in range(get_number_of_chapters(str(book))):
+        chunks = split_into_chunks(
+            read_chapter(str(book), chapter), settings.size, settings.overlap
+        )
+        print(f"Chapter {chapter}: {len(chunks)} chunks")
+        for index, chunk in enumerate(chunks):
+            print(f"  {index} {chunk}")
+            print(f"    -> {' '.join(lemmatizer.lemmatize(chunk))}")
+        total += len(chunks)
+    print(f"{total} chunks lemmatized with {lemmatizer.name}, nothing embedded or stored")
 
 
 def print_embeddings(book: Path, embedder: Embedder, settings: ChunkSettings) -> None:

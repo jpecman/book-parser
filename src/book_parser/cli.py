@@ -3,10 +3,11 @@ import sys
 from pathlib import Path
 
 from book_parser.books import BOOKS_DIR, exclude_books, find_books
-from book_parser.dry_run import print_chunks, print_embeddings
+from book_parser.dry_run import print_chunks, print_embeddings, print_lemmas
 from book_parser.embed import create_embedder
 from book_parser.errors import BookParserError
 from book_parser.ingest import ingest_books
+from book_parser.lemmatize import create_lemmatizer
 from book_parser.settings import ChunkSettings, load_chunk_settings
 
 
@@ -44,9 +45,15 @@ def parse_args() -> argparse.Namespace:
         metavar="BOOK",
         help="also embed the chunks of one book, still without storing",
     )
+    dry_runs.add_argument(
+        "--dry-run-lemmas",
+        type=Path,
+        metavar="BOOK",
+        help="print the chunks of one book with their lemmas, without storing",
+    )
     args = parser.parse_args()
 
-    dry_run = args.dry_run or args.dry_run_embed
+    dry_run = _dry_run_book(args)
     if dry_run and (args.directory or args.exclude or args.start_chapter is not None):
         parser.error(
             "a dry run takes a single book, not a directory, --exclude or --start-chapter"
@@ -61,7 +68,7 @@ def main() -> None:
     args = parse_args()
     try:
         settings = load_chunk_settings()
-        if args.dry_run or args.dry_run_embed:
+        if _dry_run_book(args):
             _dry_run(args, settings)
         else:
             _ingest(args, settings)
@@ -70,15 +77,23 @@ def main() -> None:
         sys.exit(1)
 
 
+# The book given to whichever dry-run option was used, or None.
+def _dry_run_book(args: argparse.Namespace) -> Path | None:
+    return args.dry_run or args.dry_run_embed or args.dry_run_lemmas
+
+
 def _dry_run(args: argparse.Namespace, settings: ChunkSettings) -> None:
-    dry_run_book: Path = args.dry_run or args.dry_run_embed
+    dry_run_book = _dry_run_book(args)
+    assert dry_run_book is not None
     book = dry_run_book.expanduser()
     if not book.is_file():
         raise BookParserError(f"Not a file: {book}")
     if args.dry_run:
         print_chunks(book, settings)
-    else:
+    elif args.dry_run_embed:
         print_embeddings(book, create_embedder(), settings)
+    else:
+        print_lemmas(book, create_lemmatizer(), settings)
 
 
 def _ingest(args: argparse.Namespace, settings: ChunkSettings) -> None:

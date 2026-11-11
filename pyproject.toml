@@ -9,6 +9,7 @@ dependencies = [
     "langchain-openai",
     "pymupdf",
     "qdrant-client",
+    "ufal.morphodita",
 ]
 
 [project.scripts]
