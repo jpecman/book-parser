@@ -96,15 +96,22 @@ def print_embeddings(
     book: Path, embedder: Embedder, chunk_size: int, overlap: int
 ) -> None:
     total = 0
+    embed_seconds = 0.0
     for chapter in range(get_number_of_chapters(str(book))):
         chunks = split_into_chunks(read_chapter(str(book), chapter), chunk_size, overlap)
+        embed_started = time.perf_counter()
         vectors = embedder.embed(chunks) if chunks else []
+        duration = time.perf_counter() - embed_started
         size = len(vectors[0]) if vectors else 0
-        print(f"Chapter {chapter}: {len(chunks)} chunks, vector size {size}")
+        print(
+            f"Chapter {chapter}: {len(chunks)} chunks, vector size {size} "
+            f"({duration:.1f} s)"
+        )
         total += len(chunks)
+        embed_seconds += duration
     collection = collection_name(embedder, chunk_size, overlap)
     print(f"Embedded {total} chunks for collection '{collection}', nothing stored")
-
+    print(f"Embedding took {embed_seconds:.1f} s in total")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="python -m book_parser")
